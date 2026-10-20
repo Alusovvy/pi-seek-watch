@@ -6,6 +6,10 @@ A [pi](https://pi.dev) package that tells agents and you whether DeepSeek's API 
 - **`/deepseek` command**: shows the same status in the UI.
 - **Whale badge**: in the interactive TUI, a small DeepSeek whale sits in the top-right corner. It is green at off-peak price and red at peak price, and it is redrawn exactly when the tier changes.
 
+![The badge whale in its off-peak and peak colours, each with the deepseek_pricing output for that time](https://raw.githubusercontent.com/Alusovvy/pi-seek-watch/main/assets/preview.png)
+
+<sub>Rendered from the package's own whale and `deepseek_pricing` output, drawn in pi's dark-theme colours; not a terminal screenshot.</sub>
+
 ## Schedule
 
 Peak (full price) is **01:00–04:00 and 06:00–10:00 UTC, Monday–Friday**. All other hours are off-peak, and so are Saturday and Sunday in full.
@@ -19,13 +23,19 @@ Source: <https://api-docs.deepseek.com/quick_start/pricing>
 pi install git:github.com/Alusovvy/pi-seek-watch
 ```
 
+From npm, once it is published there (not yet):
+
+```bash
+pi install npm:pi-seek-watch
+```
+
 Or try it for one run without changing your settings:
 
 ```bash
 pi -e git:github.com/Alusovvy/pi-seek-watch
 ```
 
-Add `-l` to `pi install` to install it for the current project only (`.pi/settings.json`). The package is not published to npm.
+Add `-l` to `pi install` to install it for the current project only (`.pi/settings.json`).
 
 ## The `deepseek_pricing` tool
 
@@ -97,6 +107,7 @@ src/pricing.ts   pure schedule logic: isOffPeak(date), nextChange(date), pricing
 src/badge.ts     TUI whale overlay
 src/index.ts     extension entry: tool, command, badge
 test/            node:test unit tests for src/pricing.ts
+assets/          gallery preview (pi.image), not shipped in the npm tarball
 ```
 
 ## Development
