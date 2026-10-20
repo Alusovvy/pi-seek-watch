@@ -102,3 +102,49 @@ describe("pricingStatus", () => {
 		assert.equal(s.nextChangeIn, (13 + 24) * 60);
 	});
 });
+
+describe("isOffPeak on Chinese public holidays", () => {
+	it("treats weekday holidays as off-peak during peak hours", () => {
+		assert.equal(isOffPeak(at("2026-02-16T02:30:00Z")), true); // Spring Festival Monday
+		assert.equal(isOffPeak(at("2026-02-16T08:00:00Z")), true);
+		assert.equal(isOffPeak(at("2026-10-02T08:00:00Z")), true); // National Day Friday
+		assert.equal(isOffPeak(at("2026-01-01T02:00:00Z")), true); // New Year Thursday
+		assert.equal(isOffPeak(at("2025-10-02T08:00:00Z")), true); // National Day Thursday
+	});
+
+	it("keeps make-up workdays off-peak because they are weekends", () => {
+		assert.equal(isOffPeak(at("2026-02-14T02:00:00Z")), true); // Saturday make-up workday
+		assert.equal(isOffPeak(at("2026-02-28T08:00:00Z")), true); // Saturday make-up workday
+	});
+
+	it("does not treat the eve of a holiday as off-peak when it is a workday", () => {
+		assert.equal(isOffPeak(at("2024-02-09T02:00:00Z")), false); // Friday, New Year's Eve (not official)
+	});
+});
+
+describe("nextChange across holidays", () => {
+	it("stays off-peak through a 9-day Spring Festival and the surrounding weekend", () => {
+		assert.equal(nextChange(at("2026-02-13T10:00:00Z")).toISOString(), "2026-02-24T01:00:00.000Z");
+	});
+
+	it("during a holiday reports the first weekday peak after it ends", () => {
+		assert.equal(nextChange(at("2026-10-02T02:00:00Z")).toISOString(), "2026-10-08T01:00:00.000Z");
+	});
+
+	it("the evening before a holiday starts changes at the holiday's next weekday peak", () => {
+		assert.equal(nextChange(at("2026-09-30T10:00:00Z")).toISOString(), "2026-10-08T01:00:00.000Z");
+	});
+});
+
+describe("pricingStatus note", () => {
+	it("says holidays are modelled within the covered years", () => {
+		const s = pricingStatus(at("2026-02-16T02:00:00Z"));
+		assert.equal(s.offPeak, true);
+		assert.match(s.note, /modelled/);
+	});
+
+	it("says holidays are not modelled outside the covered years", () => {
+		const s = pricingStatus(at("2030-02-14T02:00:00Z"));
+		assert.match(s.note, /not modelled/);
+	});
+});

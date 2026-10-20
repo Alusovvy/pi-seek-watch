@@ -15,7 +15,25 @@ A [pi](https://pi.dev) package that tells agents and you whether DeepSeek's API 
 Peak (full price) is **01:00–04:00 and 06:00–10:00 UTC, Monday–Friday**. All other hours are off-peak, and so are Saturday and Sunday in full.
 Source: <https://api-docs.deepseek.com/quick_start/pricing>
 
-> **Holiday caveat:** DeepSeek also treats Chinese public holidays as off-peak all day. This package has no holiday calendar, so on those days it may report peak while DeepSeek actually charges off-peak.
+Chinese public holidays are off-peak in full, too, and are modelled from the official State Council holiday calendar for 2024–2026 (see [Holiday calendar](#holiday-calendar)). Outside those years the package falls back to the weekday schedule and the `note` field says so.
+
+## Holiday calendar
+
+`src/holidays.ts` holds the Chinese public holidays (the State Council's annual “放假安排” days off) for **2024, 2025 and 2026**:
+
+| Holiday | 2024 | 2025 | 2026 |
+|---|---|---|---|
+| New Year's Day | Jan 1 | Jan 1 | Jan 1–3 |
+| Spring Festival | Feb 10–17 | Jan 28–Feb 4 | Feb 15–23 |
+| Qingming | Apr 4–6 | Apr 4–6 | Apr 4–6 |
+| Labor Day | May 1–5 | May 1–5 | May 1–5 |
+| Dragon Boat | Jun 10 | May 31–Jun 2 | Jun 19–21 |
+| Mid-Autumn | Sep 15–17 | *(with National Day)* | Sep 25–27 |
+| National Day | Oct 1–7 | Oct 1–8 | Oct 1–7 |
+
+Dates are inclusive and interpreted in UTC; the peak windows (01:00–10:00 UTC) map to the same calendar date in Beijing (UTC+8), so a holiday's UTC date equals its Beijing date for pricing purposes. The State Council publishes each year's arrangement in late autumn (usually November). To extend coverage, add the new year's entries to `HOLIDAYS` in `src/holidays.ts` — the covered range is derived from the data — then release. Years not in the table fall back to the weekday schedule and the `note` field reports that holidays are not modelled for that year.
+
+Make-up workdays (调休上班日) are always Saturdays or Sundays, which are off-peak regardless of the calendar, so only the days off are listed.
 
 ## Install
 
@@ -23,7 +41,7 @@ Source: <https://api-docs.deepseek.com/quick_start/pricing>
 pi install git:github.com/Alusovvy/pi-seek-watch
 ```
 
-From npm, once it is published there (not yet):
+From npm:
 
 ```bash
 pi install npm:pi-seek-watch
@@ -46,7 +64,7 @@ The model sees this text:
 ```text
 DeepSeek pricing at 2026-10-23T09:12:00.000Z: PEAK (full price).
 Switches to off-peak at 2026-10-23T10:00:00.000Z (in 48 min).
-Note: Chinese public holidays are off-peak all day but are not modelled, so on those days this may report peak.
+Note: Chinese public holidays are off-peak all day and are modelled from the official State Council calendar.
 ```
 
 The same data is returned as `details`. It is also returned as `structuredContent`, which matches the tool's `outputSchema`, so programmatic callers such as codemode scripts get it as an object:
@@ -59,7 +77,7 @@ The same data is returned as `details`. It is also returned as `structuredConten
   "nextChangeUtc": "2026-10-23T10:00:00.000Z",
   "nextChangeIn": 48,
   "nextTier": "off-peak",
-  "note": "Chinese public holidays are off-peak all day but are not modelled, so on those days this may report peak."
+  "note": "Chinese public holidays are off-peak all day and are modelled from the official State Council calendar."
 }
 ```
 
@@ -71,7 +89,7 @@ The same data is returned as `details`. It is also returned as `structuredConten
 | `nextChangeUtc` | when the tier next changes (ISO, UTC) |
 | `nextChangeIn` | minutes until then, rounded up |
 | `nextTier` | the tier after that change |
-| `note` | the holiday caveat |
+| `note` | how Chinese public holidays are handled for that date |
 
 `nextChangeUtc` is the next *actual* change. For example, on Friday at 10:00 UTC it is Monday 01:00 UTC, because the whole weekend is off-peak.
 
@@ -96,6 +114,7 @@ Set `PI_SEEK_WATCH_NOW` to an ISO date to make the tool, the command and the bad
 ```bash
 PI_SEEK_WATCH_NOW=2026-10-24T08:00:00Z pi      # a Saturday: off-peak
 PI_SEEK_WATCH_NOW=2026-10-23T02:00:00Z pi      # a Friday, 02:00 UTC: peak
+PI_SEEK_WATCH_NOW=2026-02-16T08:00:00Z pi      # Spring Festival Monday: off-peak
 ```
 
 On Windows `cmd`: `set PI_SEEK_WATCH_NOW=2026-10-23T02:00:00Z && pi`. Invalid dates are ignored and the real clock is used.
@@ -103,6 +122,7 @@ On Windows `cmd`: `set PI_SEEK_WATCH_NOW=2026-10-23T02:00:00Z && pi`. Invalid da
 ## Layout
 
 ```text
+src/holidays.ts  Chinese public holiday calendar (State Council arrangements)
 src/pricing.ts   pure schedule logic: isOffPeak(date), nextChange(date), pricingStatus(date)
 src/badge.ts     TUI whale overlay
 src/index.ts     extension entry: tool, command, badge

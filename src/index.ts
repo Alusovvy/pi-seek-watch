@@ -32,7 +32,7 @@ const StatusSchema = Type.Object({
 	nextChangeUtc: Type.String({ description: "ISO timestamp of the next tier change" }),
 	nextChangeIn: Type.Number({ description: "Minutes until the next tier change" }),
 	nextTier: TierSchema,
-	note: Type.String({ description: "Caveat about Chinese public holidays" }),
+	note: Type.String({ description: "Caveat about Chinese public holiday coverage" }),
 });
 
 export default function (pi: ExtensionAPI) {
@@ -43,14 +43,15 @@ export default function (pi: ExtensionAPI) {
 			"Report whether DeepSeek API pricing is currently off-peak (discounted) or peak (full price), " +
 			"and when it next changes. Schedule: peak 01:00-04:00 and 06:00-10:00 UTC Monday-Friday; " +
 			"all other hours and all of Saturday/Sunday are off-peak. Chinese public holidays are off-peak " +
-			"but are not modelled, so on those days the tool may report peak. Takes no parameters; " +
+			"all day and are modelled from the official State Council holiday calendar; years outside that " +
+			"calendar may report peak on holidays (see the note field). Takes no parameters; " +
 			"returns offPeak, tier, nowUtc, nextChangeUtc, nextChangeIn (minutes), nextTier and a note. " +
 			`Source: ${PRICING_URL}`,
 		promptSnippet: "Check whether DeepSeek API pricing is off-peak (discounted) or peak right now",
 		promptGuidelines: [
 			"Call deepseek_pricing before choosing or delegating to a DeepSeek model for cost-sensitive work, and prefer DeepSeek when it reports offPeak: true.",
 			"If deepseek_pricing reports peak and the work can wait, use nextChangeUtc / nextChangeIn to say when the discount starts.",
-			"Call deepseek_pricing again rather than reusing an old answer: the tier changes at fixed UTC hours.",
+			"Call deepseek_pricing again rather than reusing an old answer: the tier changes at fixed UTC hours and on Chinese public holidays.",
 		],
 		parameters: Type.Object({}),
 		outputSchema: StatusSchema,

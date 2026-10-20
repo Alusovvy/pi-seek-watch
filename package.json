@@ -1,6 +1,6 @@
 {
   "name": "pi-seek-watch",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Is DeepSeek off-peak right now? A deepseek_pricing tool agents can call (also headless), a /deepseek command, and a green/red whale badge in the pi TUI.",
   "type": "module",
   "keywords": [

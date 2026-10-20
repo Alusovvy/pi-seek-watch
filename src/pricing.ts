@@ -3,19 +3,15 @@
  *
  * Peak hours (full price) are 01:00–04:00 and 06:00–10:00 UTC, Monday–Friday.
  * All other hours — including weekends in full — are off-peak (discounted).
+ * Chinese public holidays are also off-peak in full; see ./holidays.ts.
  * https://api-docs.deepseek.com/quick_start/pricing
- *
- * Chinese public holidays are also fully off-peak, but a holiday calendar is
- * out of scope, so on those few days this module reports peak where the API
- * actually charges off-peak.
  */
+
+import { hasHolidayData, isHoliday } from "./holidays.ts";
 
 export type Tier = "off-peak" | "peak";
 
 export const PRICING_URL = "https://api-docs.deepseek.com/quick_start/pricing";
-
-export const HOLIDAY_NOTE =
-	"Chinese public holidays are off-peak all day but are not modelled, so on those days this may report peak.";
 
 /** Peak windows in minutes after 00:00 UTC, [start, end), Monday–Friday only. */
 export const PEAK_WINDOWS: ReadonlyArray<readonly [number, number]> = [
@@ -31,18 +27,25 @@ const DAY = 24 * 60 * MINUTE;
 
 /** True while DeepSeek's off-peak discount is active at `date`. */
 export function isOffPeak(date: Date): boolean {
+	if (isHoliday(date)) return true; // public holidays are off-peak in full
 	const day = date.getUTCDay(); // 0 = Sun … 6 = Sat
 	if (day === 0 || day === 6) return true; // weekends are fully off-peak
 	const minutes = date.getUTCHours() * 60 + date.getUTCMinutes();
 	return !PEAK_WINDOWS.some(([start, end]) => minutes >= start && minutes < end);
 }
 
-/** The first instant strictly after `date` at which the tier differs from the tier at `date`. */
+/**
+ * The first instant strictly after `date` at which the tier differs from the
+ * tier at `date`.
+ *
+ * The longest possible off-peak run is a 9-day Spring Festival wrapped by
+ * weekends (Friday 10:00 UTC → the following Tuesday 01:00 UTC, ~10.6 days),
+ * so scanning 32 days of boundaries always finds the next change.
+ */
 export function nextChange(date: Date): Date {
 	const current = isOffPeak(date);
 	const midnight = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-	// The longest unchanged stretch is Friday 10:00 → Monday 01:00 (63 h), so 4 days always suffice.
-	for (let d = 0; d <= 4; d++) {
+	for (let d = 0; d <= 32; d++) {
 		for (const minutes of BOUNDARIES) {
 			const at = midnight + d * DAY + minutes * MINUTE;
 			if (at > date.getTime() && isOffPeak(new Date(at)) !== current) return new Date(at);
@@ -66,6 +69,14 @@ export interface PricingStatus {
 
 const tierOf = (offPeak: boolean): Tier => (offPeak ? "off-peak" : "peak");
 
+/** Caveat describing how Chinese public holidays are handled for `date`. */
+export function holidayNote(date: Date): string {
+	if (hasHolidayData(date.getUTCFullYear())) {
+		return "Chinese public holidays are off-peak all day and are modelled from the official State Council calendar.";
+	}
+	return `Chinese public holidays in ${date.getUTCFullYear()} are not modelled, so on those days this may report peak.`;
+}
+
 /** Snapshot of the pricing tier at `date` and when it next changes. */
 export function pricingStatus(date: Date): PricingStatus {
 	const offPeak = isOffPeak(date);
@@ -77,7 +88,7 @@ export function pricingStatus(date: Date): PricingStatus {
 		nextChangeUtc: next.toISOString(),
 		nextChangeIn: Math.ceil((next.getTime() - date.getTime()) / MINUTE),
 		nextTier: tierOf(!offPeak),
-		note: HOLIDAY_NOTE,
+		note: holidayNote(date),
 	};
 }
 
