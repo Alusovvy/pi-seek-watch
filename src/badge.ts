@@ -15,6 +15,7 @@ const WHALE: string[] = [
 
 export function registerBadge(pi: ExtensionAPI, now: () => Date): void {
 	let tui: { requestRender(force?: boolean): void } | null = null;
+	let closeOverlay: (() => void) | null = null;
 	let boundaryTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function clearTimer() {
@@ -22,6 +23,15 @@ export function registerBadge(pi: ExtensionAPI, now: () => Date): void {
 			clearTimeout(boundaryTimer);
 			boundaryTimer = null;
 		}
+	}
+
+	// Close this overlay ourselves: pi's UI reset on /new, /resume and reload
+	// hides only the topmost overlay, which may not be the whale.
+	function removeBadge() {
+		clearTimer();
+		closeOverlay?.();
+		closeOverlay = null;
+		tui = null;
 	}
 
 	function scheduleBoundaryRefresh() {
@@ -37,12 +47,14 @@ export function registerBadge(pi: ExtensionAPI, now: () => Date): void {
 
 	pi.on("session_start", (_event, ctx) => {
 		if (ctx.mode !== "tui") return;
+		removeBadge();
 
 		// Non-capturing overlay: floats in the corner without stealing focus.
 		void ctx.ui
-			.custom(
-				(t, theme) => {
+			.custom<void>(
+				(t, theme, _keybindings, done) => {
 					tui = t;
+					closeOverlay = () => done();
 					return {
 						render(): string[] {
 							const color = isOffPeak(now()) ? "success" : "error";
@@ -66,8 +78,5 @@ export function registerBadge(pi: ExtensionAPI, now: () => Date): void {
 		scheduleBoundaryRefresh();
 	});
 
-	pi.on("session_shutdown", () => {
-		clearTimer();
-		tui = null;
-	});
+	pi.on("session_shutdown", removeBadge);
 }
