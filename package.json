@@ -1,0 +1,34 @@
+{
+  "name": "pi-seek-watch",
+  "version": "0.1.0",
+  "description": "Pi extension: tells agents whether DeepSeek API pricing is off-peak right now (tool, /deepseek command, TUI whale badge).",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "deepseek"
+  ],
+  "license": "MIT",
+  "author": "Alusovvy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alusovvy/pi-seek-watch.git"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  }
+}
