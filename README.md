@@ -15,23 +15,25 @@ A [pi](https://pi.dev) package that tells agents and you whether DeepSeek's API 
 Peak (full price) is **01:00–04:00 and 06:00–10:00 UTC, Monday–Friday**. All other hours are off-peak, and so are Saturday and Sunday in full.
 Source: <https://api-docs.deepseek.com/quick_start/pricing>
 
-Chinese public holidays are off-peak in full, too, and are modelled from the official State Council holiday calendar for 2024–2026 (see [Holiday calendar](#holiday-calendar)). Outside those years the package falls back to the weekday schedule and the `note` field says so.
+Chinese public holidays are off-peak in full, too, and are modelled from the official State Council holiday calendar for 2024–2026, and from the statutory days alone for 2027 until that year's calendar is announced (see [Holiday calendar](#holiday-calendar)). Outside those years the package falls back to the weekday schedule. The `note` field always says which of these applies.
 
 ## Holiday calendar
 
-`src/holidays.ts` holds the Chinese public holidays (the State Council's annual “放假安排” days off) for **2024, 2025 and 2026**:
+`src/holidays.ts` holds the Chinese public holidays (the State Council's annual “放假安排” days off) for **2024, 2025 and 2026**. For **2027** it holds only the statutory days for now:
 
-| Holiday | 2024 | 2025 | 2026 |
-|---|---|---|---|
-| New Year's Day | Jan 1 | Jan 1 | Jan 1–3 |
-| Spring Festival | Feb 10–17 | Jan 28–Feb 4 | Feb 15–23 |
-| Qingming | Apr 4–6 | Apr 4–6 | Apr 4–6 |
-| Labor Day | May 1–5 | May 1–5 | May 1–5 |
-| Dragon Boat | Jun 10 | May 31–Jun 2 | Jun 19–21 |
-| Mid-Autumn | Sep 15–17 | *(with National Day)* | Sep 25–27 |
-| National Day | Oct 1–7 | Oct 1–8 | Oct 1–7 |
+| Holiday | 2024 | 2025 | 2026 | 2027 (statutory) |
+|---|---|---|---|---|
+| New Year's Day | Jan 1 | Jan 1 | Jan 1–3 | Jan 1 |
+| Spring Festival | Feb 10–17 | Jan 28–Feb 4 | Feb 15–23 | Feb 5–8 |
+| Qingming | Apr 4–6 | Apr 4–6 | Apr 4–6 | Apr 5 |
+| Labor Day | May 1–5 | May 1–5 | May 1–5 | May 1–2 |
+| Dragon Boat | Jun 10 | May 31–Jun 2 | Jun 19–21 | Jun 9 |
+| Mid-Autumn | Sep 15–17 | *(with National Day)* | Sep 25–27 | Sep 15 |
+| National Day | Oct 1–7 | Oct 1–8 | Oct 1–7 | Oct 1–3 |
 
-Dates are inclusive and interpreted in UTC; the peak windows (01:00–10:00 UTC) map to the same calendar date in Beijing (UTC+8), so a holiday's UTC date equals its Beijing date for pricing purposes. The State Council publishes each year's arrangement in late autumn (usually November). To extend coverage, add the new year's entries to `HOLIDAYS` in `src/holidays.ts` — the covered range is derived from the data — then release. Years not in the table fall back to the weekday schedule and the `note` field reports that holidays are not modelled for that year.
+The statutory days are the ones the holiday law (全国年节及纪念日放假办法, State Council Order No. 795) fixes in advance. The annual notice only adds days to them: bridge days, and a weekday off in place of a statutory day that falls on a weekend. So until the 2027 notice is out, those extra days report peak, and the `note` field says so.
+
+Dates are inclusive and interpreted in UTC; the peak windows (01:00–10:00 UTC) map to the same calendar date in Beijing (UTC+8), so a holiday's UTC date equals its Beijing date for pricing purposes. The State Council publishes each year's arrangement in late autumn (usually November). To extend coverage, add the new year's entries to `HOLIDAYS` in `src/holidays.ts` (the covered range is derived from the data), delete that year from `STATUTORY_HOLIDAYS`, then release. Years in neither table fall back to the weekday schedule, and the `note` field reports that holidays are not modelled for that year.
 
 Make-up workdays (调休上班日) are always Saturdays or Sundays, which are off-peak regardless of the calendar, so only the days off are listed.
 
@@ -99,7 +101,7 @@ Run `/deepseek` to get the same three lines as a notification. It is an info not
 
 ## The badge
 
-The badge is drawn only in the interactive TUI (`ctx.mode === "tui"`). It is a non-capturing overlay, so it never takes focus. A single timer redraws it just after each tier change. The timer starts on `session_start` and is cleared on `session_shutdown`.
+The badge is drawn only in the interactive TUI (`ctx.mode === "tui"`). It is a non-capturing overlay, so it never takes focus. A single timer redraws it just after each tier change. The overlay and its timer start on `session_start`. On `session_shutdown` (quit, `/new`, `/resume`, `/fork` or reload) both are removed, so a new session never stacks a second whale.
 
 ```text
   .-""-.
@@ -122,19 +124,24 @@ On Windows `cmd`: `set PI_SEEK_WATCH_NOW=2026-10-23T02:00:00Z && pi`. Invalid da
 ## Layout
 
 ```text
-src/holidays.ts  Chinese public holiday calendar (State Council arrangements)
+src/holidays.ts  Chinese public holiday calendar (State Council arrangements, statutory days for later years)
 src/pricing.ts   pure schedule logic: isOffPeak(date), nextChange(date), pricingStatus(date)
 src/badge.ts     TUI whale overlay
 src/index.ts     extension entry: tool, command, badge
-test/            node:test unit tests for src/pricing.ts
+test/            node:test unit tests: schedule, holidays, and the tool, command and badge against a fake pi
 assets/          gallery preview (pi.image), not shipped in the npm tarball
 ```
 
 ## Development
 
 ```bash
-npm test   # node --test on the .ts files (Node 22.18+ / 24 strip types natively)
+npm install   # only typebox, for the extension tests
+npm test      # node --test on the .ts files (Node 22.18+ / 24 strip types natively)
 ```
+
+CI (`.github/workflows/ci.yml`) runs the tests on Node 22.18 and 24 for every push to `main` and every pull request.
+
+To release, bump `version` in `package.json`, push, then publish a GitHub release tagged with that version (`0.3.0` or `v0.3.0`). `.github/workflows/publish.yml` checks the tag against `package.json`, runs the tests and publishes to npm with provenance. It needs either an `NPM_TOKEN` repository secret (an npm automation token) or this workflow registered as a trusted publisher for the package on npmjs.com.
 
 ## License
 
