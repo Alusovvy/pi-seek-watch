@@ -134,6 +134,10 @@ describe("nextChange across holidays", () => {
 	it("the evening before a holiday starts changes at the holiday's next weekday peak", () => {
 		assert.equal(nextChange(at("2026-09-30T10:00:00Z")).toISOString(), "2026-10-08T01:00:00.000Z");
 	});
+
+	it("New Year's Eve 2026 skips New Year's Day 2027 and the weekend", () => {
+		assert.equal(nextChange(at("2026-12-31T10:00:00Z")).toISOString(), "2027-01-04T01:00:00.000Z");
+	});
 });
 
 describe("pricingStatus note", () => {
@@ -141,6 +145,12 @@ describe("pricingStatus note", () => {
 		const s = pricingStatus(at("2026-02-16T02:00:00Z"));
 		assert.equal(s.offPeak, true);
 		assert.match(s.note, /modelled/);
+	});
+
+	it("says only the statutory days are modelled before the notice is out", () => {
+		const s = pricingStatus(at("2027-02-05T02:00:00Z"));
+		assert.equal(s.offPeak, true);
+		assert.match(s.note, /statutory days only/);
 	});
 
 	it("says holidays are not modelled outside the covered years", () => {

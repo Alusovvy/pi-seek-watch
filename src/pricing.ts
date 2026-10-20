@@ -7,7 +7,7 @@
  * https://api-docs.deepseek.com/quick_start/pricing
  */
 
-import { hasHolidayData, isHoliday } from "./holidays.ts";
+import { holidayCoverage, isHoliday } from "./holidays.ts";
 
 export type Tier = "off-peak" | "peak";
 
@@ -71,10 +71,15 @@ const tierOf = (offPeak: boolean): Tier => (offPeak ? "off-peak" : "peak");
 
 /** Caveat describing how Chinese public holidays are handled for `date`. */
 export function holidayNote(date: Date): string {
-	if (hasHolidayData(date.getUTCFullYear())) {
-		return "Chinese public holidays are off-peak all day and are modelled from the official State Council calendar.";
+	const year = date.getUTCFullYear();
+	switch (holidayCoverage(year)) {
+		case "announced":
+			return "Chinese public holidays are off-peak all day and are modelled from the official State Council calendar.";
+		case "statutory":
+			return `Chinese public holidays in ${year} are modelled from the statutory days only, as the State Council has not announced the full calendar yet, so extra days off may report peak.`;
+		case "none":
+			return `Chinese public holidays in ${year} are not modelled, so on those days this may report peak.`;
 	}
-	return `Chinese public holidays in ${date.getUTCFullYear()} are not modelled, so on those days this may report peak.`;
 }
 
 /** Snapshot of the pricing tier at `date` and when it next changes. */

@@ -26,6 +26,7 @@
  *
  * Add each new year's entries after the State Council notice is published
  * (usually in November); the covered range is derived from the data below.
+ * Until then, STATUTORY_HOLIDAYS stands in for that year.
  */
 
 export interface HolidayPeriod {
@@ -65,6 +66,37 @@ export const HOLIDAYS: ReadonlyArray<HolidayPeriod> = [
 	{ name: "National Day 2026", start: "2026-10-01", end: "2026-10-07" },
 ];
 
+/**
+ * Statutory days off for years whose State Council notice is not out yet.
+ *
+ * The holiday law (全国年节及纪念日放假办法, as revised by State Council Order
+ * No. 795, in force from 2025) fixes these days before any notice:
+ * New Year's Day 1 day (Jan 1), Spring Festival 4 days (lunar New Year's Eve
+ * and the 1st–3rd of the first lunar month), Qingming 1 day, Labor Day 2 days
+ * (May 1–2), Dragon Boat 1 day (5th of the 5th lunar month), Mid-Autumn 1 day
+ * (15th of the 8th lunar month) and National Day 3 days (Oct 1–3).
+ * https://www.gov.cn/zhengce/content/202411/content_6986380.htm
+ *
+ * The annual notice only adds days to these (bridge days, and the weekday
+ * that makes up for a statutory day falling on a weekend), so this is a lower
+ * bound: such a day still reports peak until the notice lands. When it does, add
+ * the year to HOLIDAYS and delete its entries here.
+ *
+ * The lunar dates are taken from the official lunar calendar rather than from
+ * Intl's "chinese" calendar, which puts Lunar New Year 2027 on Feb 7 instead
+ * of Feb 6.
+ */
+export const STATUTORY_HOLIDAYS: ReadonlyArray<HolidayPeriod> = [
+	// 2027 — statutory days only; the notice is expected in late 2026
+	{ name: "New Year's Day 2027", start: "2027-01-01", end: "2027-01-01" },
+	{ name: "Spring Festival 2027", start: "2027-02-05", end: "2027-02-08" },
+	{ name: "Qingming Festival 2027", start: "2027-04-05", end: "2027-04-05" },
+	{ name: "Labor Day 2027", start: "2027-05-01", end: "2027-05-02" },
+	{ name: "Dragon Boat Festival 2027", start: "2027-06-09", end: "2027-06-09" },
+	{ name: "Mid-Autumn Festival 2027", start: "2027-09-15", end: "2027-09-15" },
+	{ name: "National Day 2027", start: "2027-10-01", end: "2027-10-03" },
+];
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** "YYYY-MM-DD" (UTC) key for a Date. */
@@ -72,9 +104,25 @@ function utcDayKey(date: Date): string {
 	return date.toISOString().slice(0, 10);
 }
 
+const yearOf = (p: HolidayPeriod): number => Number(p.start.slice(0, 4));
+
+/** The first year the calendar covers (derived from HOLIDAYS). */
+export const FIRST_HOLIDAY_YEAR: number = Math.min(...HOLIDAYS.map(yearOf));
+
+/** The last year the calendar covers (derived from HOLIDAYS). */
+export const LAST_HOLIDAY_YEAR: number = Math.max(...HOLIDAYS.map(yearOf));
+
+const announced = (year: number): boolean => year >= FIRST_HOLIDAY_YEAR && year <= LAST_HOLIDAY_YEAR;
+
+/** Years with only statutory days; an announced year always wins. */
+const STATUTORY_YEARS: ReadonlySet<number> = new Set(
+	STATUTORY_HOLIDAYS.map(yearOf).filter((year) => !announced(year)),
+);
+
 function buildHolidayDays(): ReadonlySet<string> {
 	const days = new Set<string>();
-	for (const p of HOLIDAYS) {
+	const periods = [...HOLIDAYS, ...STATUTORY_HOLIDAYS.filter((p) => STATUTORY_YEARS.has(yearOf(p)))];
+	for (const p of periods) {
 		const start = Date.parse(`${p.start}T00:00:00Z`);
 		const end = Date.parse(`${p.end}T00:00:00Z`);
 		for (let t = start; t <= end; t += DAY_MS) {
@@ -91,17 +139,14 @@ export function isHoliday(date: Date): boolean {
 	return HOLIDAY_DAYS.has(utcDayKey(date));
 }
 
-/** The first year the calendar covers (derived from HOLIDAYS). */
-export const FIRST_HOLIDAY_YEAR: number = Math.min(
-	...HOLIDAYS.map((p) => Number(p.start.slice(0, 4))),
-);
+/**
+ * How `year`'s holidays are modelled: "announced" from the State Council
+ * notice, "statutory" from the fixed statutory days only, or "none".
+ */
+export type HolidayCoverage = "announced" | "statutory" | "none";
 
-/** The last year the calendar covers (derived from HOLIDAYS). */
-export const LAST_HOLIDAY_YEAR: number = Math.max(
-	...HOLIDAYS.map((p) => Number(p.start.slice(0, 4))),
-);
-
-/** True when the holiday calendar has data for `year`. */
-export function hasHolidayData(year: number): boolean {
-	return year >= FIRST_HOLIDAY_YEAR && year <= LAST_HOLIDAY_YEAR;
+export function holidayCoverage(year: number): HolidayCoverage {
+	if (announced(year)) return "announced";
+	if (STATUTORY_YEARS.has(year)) return "statutory";
+	return "none";
 }
